@@ -18,7 +18,7 @@ INPUT=""
 OUT=""
 FORMAT="md"
 LANG_OCR="ukr+rus+eng"
-MIN_CHARS="50"
+MIN_CHARS=""  # якщо порожнє — lib/<format>.sh використовує власний default
 NO_OCR="0"
 TABLES="0"
 VERBOSE="0"
@@ -66,7 +66,8 @@ while [ $# -gt 0 ]; do
   esac
 done
 
-export VERBOSE MIN_CHARS NO_OCR LANG_OCR
+export VERBOSE NO_OCR LANG_OCR
+[ -n "$MIN_CHARS" ] && export MIN_CHARS
 
 # --- Validation ---
 if [ -z "$INPUT" ]; then

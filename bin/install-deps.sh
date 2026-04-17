@@ -7,9 +7,8 @@ SKILL_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 MANIFEST="$SKILL_DIR/manifest.md"
 
 # Extract install-command block
-awk '/^## install-command/,/^## /' "$MANIFEST" \
-  | awk '/^```bash$/,/^```$/' \
-  | sed '1d;$d'
+awk '/^## install-command/{flag=1; next} /^## /{flag=0} flag' "$MANIFEST" \
+  | awk '/^```bash$/{f=1; next} /^```$/{f=0} f'
 
 echo ""
 echo "# Після встановлення:"

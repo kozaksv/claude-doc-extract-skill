@@ -4,7 +4,7 @@
 
 extract_docx() {
   local input="$1" out="$2"
-  local min_chars="${MIN_CHARS:-50}"
+  local min_chars="${MIN_CHARS:-20}"
   local method_chain=""
   local chars=0
   local extractor=""

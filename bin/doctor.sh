@@ -19,13 +19,13 @@ apt_packages=()
 while IFS= read -r line; do
   pkg="$(echo "$line" | sed -E 's/^-[[:space:]]*([a-zA-Z0-9_.-]+).*/\1/')"
   apt_packages+=("$pkg")
-done < <(awk '/^## apt-packages/,/^## /' "$MANIFEST" | grep -E '^-[[:space:]]')
+done < <(awk '/^## apt-packages/{flag=1; next} /^## /{flag=0} flag' "$MANIFEST" | grep -E '^-[[:space:]]')
 
 pip_packages=()
 while IFS= read -r line; do
   pkg="$(echo "$line" | sed -E 's/^-[[:space:]]*([a-zA-Z0-9_.-]+).*/\1/')"
   pip_packages+=("$pkg")
-done < <(awk '/^## pip-packages/,/^## /' "$MANIFEST" | grep -E '^-[[:space:]]')
+done < <(awk '/^## pip-packages/{flag=1; next} /^## /{flag=0} flag' "$MANIFEST" | grep -E '^-[[:space:]]')
 
 # --- Mapping: apt-package → command to test ---
 # Деякі пакети мають нестандартну команду
@@ -95,9 +95,18 @@ done
 
 echo ""
 echo "pip-packages (python3):"
+
+declare -A PIP_MODULE_MAP=(
+  [pdfminer.six]=pdfminer
+  [python-docx]=docx
+  [openpyxl]=openpyxl
+  [xlsx2csv]=xlsx2csv
+  [pdfplumber]=pdfplumber
+  [chardet]=chardet
+)
+
 for pkg in "${pip_packages[@]}"; do
-  # pdfminer.six → module name pdfminer
-  module="${pkg%%.*}"
+  module="${PIP_MODULE_MAP[$pkg]:-${pkg%%.*}}"
   if python3 -c "import $module" 2>/dev/null; then
     version="$(python3 -c "import $module; print(getattr($module, '__version__', '?'))" 2>/dev/null)"
     printf "  ✓ %-22s %s\n" "$pkg" "$version"
