@@ -8,7 +8,7 @@ extract_image() {
   local lang_ocr="${LANG_OCR:-ukr+rus+eng}"
 
   if ! has_cmd tesseract; then
-    log_err "tesseract не встановлено (apt: tesseract-ocr)"
+    log_err "tesseract не встановлено. Запусти: bash <skill>/bin/install-deps.sh"
     echo "CHAIN=|CHARS=0|EXTRACTOR=none"
     return $EXIT_MISSING_DEPENDENCY
   fi

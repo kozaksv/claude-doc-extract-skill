@@ -13,13 +13,27 @@ if [ ! -f "$MANIFEST" ]; then
   exit 2
 fi
 
+# --- Determine OS → choose system-package section ---
+case "$(uname -s)" in
+  Darwin)  SYS_SECTION="brew-packages";   SYS_LABEL="brew-packages" ;;
+  Linux)   SYS_SECTION="apt-packages";    SYS_LABEL="apt-packages" ;;
+  *)       SYS_SECTION="apt-packages";    SYS_LABEL="apt-packages" ;;
+esac
+
 # --- Parse manifest.md ---
-# apt-packages: у секції '## apt-packages', рядки '- name  # comment'
-apt_packages=()
+sys_packages=()
 while IFS= read -r line; do
   pkg="$(echo "$line" | sed -E 's/^-[[:space:]]*([a-zA-Z0-9_.-]+).*/\1/')"
-  apt_packages+=("$pkg")
-done < <(awk '/^## apt-packages/{flag=1; next} /^## /{flag=0} flag' "$MANIFEST" | grep -E '^-[[:space:]]')
+  sys_packages+=("$pkg")
+done < <(awk -v sec="## $SYS_SECTION" '$0==sec{flag=1; next} /^## /{flag=0} flag' "$MANIFEST" | grep -E '^-[[:space:]]')
+
+# На macOS додаємо cask-пакети (libreoffice)
+if [ "$SYS_SECTION" = "brew-packages" ]; then
+  while IFS= read -r line; do
+    pkg="$(echo "$line" | sed -E 's/^-[[:space:]]*([a-zA-Z0-9_.-]+).*/\1/')"
+    sys_packages+=("$pkg")
+  done < <(awk '/^## brew-casks/{flag=1; next} /^## /{flag=0} flag' "$MANIFEST" | grep -E '^-[[:space:]]')
+fi
 
 pip_packages=()
 while IFS= read -r line; do
@@ -27,31 +41,50 @@ while IFS= read -r line; do
   pip_packages+=("$pkg")
 done < <(awk '/^## pip-packages/{flag=1; next} /^## /{flag=0} flag' "$MANIFEST" | grep -E '^-[[:space:]]')
 
-# --- Mapping: apt-package → command to test ---
-# Деякі пакети мають нестандартну команду
-declare -A APT_CMD_MAP=(
-  [poppler-utils]=pdftotext
-  [libreoffice-core]=libreoffice
-  [tesseract-ocr]=tesseract
-  [tesseract-ocr-ukr]=TESSDATA:ukr
-  [tesseract-ocr-rus]=TESSDATA:rus
-  [tesseract-ocr-eng]=TESSDATA:eng
-  [pandoc]=pandoc
-  [antiword]=antiword
-  [catdoc]=catdoc
-  [ocrmypdf]=ocrmypdf
-)
+# --- Mapping: package → command/tesseract-data to test ---
+# Використовуємо case-функції замість declare -A (bash 3.2 compat, macOS).
 
-check_apt_package() {
+apt_cmd_spec() {
+  case "$1" in
+    poppler-utils)     echo "pdftotext" ;;
+    libreoffice-core)  echo "libreoffice" ;;
+    tesseract-ocr)     echo "tesseract" ;;
+    tesseract-ocr-ukr) echo "TESSDATA:ukr" ;;
+    tesseract-ocr-rus) echo "TESSDATA:rus" ;;
+    tesseract-ocr-eng) echo "TESSDATA:eng" ;;
+    *) echo "$1" ;;
+  esac
+}
+
+brew_cmd_spec() {
+  case "$1" in
+    poppler)        echo "pdftotext" ;;
+    tesseract-lang) echo "TESSDATA:ukr,rus,eng" ;;
+    *) echo "$1" ;;
+  esac
+}
+
+get_cmd_spec() {
+  if [ "$SYS_SECTION" = "brew-packages" ]; then
+    brew_cmd_spec "$1"
+  else
+    apt_cmd_spec "$1"
+  fi
+}
+
+check_sys_package() {
   local pkg="$1"
-  local spec="${APT_CMD_MAP[$pkg]:-$pkg}"
+  local spec; spec="$(get_cmd_spec "$pkg")"
   if [[ "$spec" == TESSDATA:* ]]; then
-    # Tesseract language data — перевірка через `tesseract --list-langs`
-    local lang="${spec#TESSDATA:}"
-    if has_cmd tesseract && tesseract --list-langs 2>&1 | grep -qx "$lang"; then
-      return 0
-    fi
-    return 1
+    local langs="${spec#TESSDATA:}"
+    has_cmd tesseract || return 1
+    local installed; installed="$(tesseract --list-langs 2>&1)"
+    # Пропускаємо всі мови через перевірку — всі мають бути
+    local IFS=','
+    for lang in $langs; do
+      echo "$installed" | grep -qx "$lang" || return 1
+    done
+    return 0
   fi
   has_cmd "$spec"
 }
@@ -73,14 +106,14 @@ get_version() {
 # --- Output ---
 echo "doc-extract doctor"
 echo ""
-echo "apt-packages:"
+echo "${SYS_LABEL}:"
 
 degraded=0
 missing=0
 
-for pkg in "${apt_packages[@]}"; do
-  if check_apt_package "$pkg"; then
-    spec="${APT_CMD_MAP[$pkg]:-$pkg}"
+for pkg in "${sys_packages[@]}"; do
+  if check_sys_package "$pkg"; then
+    spec="$(get_cmd_spec "$pkg")"
     if [[ "$spec" == TESSDATA:* ]]; then
       printf "  ✓ %-22s %s\n" "$pkg" "(tesseract lang data)"
     else
@@ -96,17 +129,16 @@ done
 echo ""
 echo "pip-packages (python3):"
 
-declare -A PIP_MODULE_MAP=(
-  [pdfminer.six]=pdfminer
-  [python-docx]=docx
-  [openpyxl]=openpyxl
-  [xlsx2csv]=xlsx2csv
-  [pdfplumber]=pdfplumber
-  [chardet]=chardet
-)
+pip_module_for() {
+  case "$1" in
+    pdfminer.six) echo "pdfminer" ;;
+    python-docx)  echo "docx" ;;
+    *) echo "${1%%.*}" ;;
+  esac
+}
 
 for pkg in "${pip_packages[@]}"; do
-  module="${PIP_MODULE_MAP[$pkg]:-${pkg%%.*}}"
+  module="$(pip_module_for "$pkg")"
   if python3 -c "import $module" 2>/dev/null; then
     version="$(python3 -c "import $module; print(getattr($module, '__version__', '?'))" 2>/dev/null)"
     printf "  ✓ %-22s %s\n" "$pkg" "$version"

@@ -79,13 +79,29 @@ method_chain: [pdftotext]
 
 ## Залежності
 
-**apt:** `poppler-utils libreoffice-core libreoffice-writer libreoffice-calc tesseract-ocr tesseract-ocr-{ukr,rus,eng} pandoc antiword catdoc ocrmypdf`
+**Debian/Ubuntu (apt):**
+```bash
+sudo apt-get install -y poppler-utils libreoffice-core libreoffice-writer libreoffice-calc \
+  tesseract-ocr tesseract-ocr-ukr tesseract-ocr-rus tesseract-ocr-eng \
+  pandoc antiword catdoc ocrmypdf
+```
 
-**pip:** `pdfminer.six python-docx openpyxl xlsx2csv pdfplumber chardet`
+**macOS (Homebrew):**
+```bash
+brew install poppler tesseract tesseract-lang pandoc antiword catdoc ocrmypdf
+brew install --cask libreoffice
+```
 
-Повний манфіест у [`manifest.md`](manifest.md).
+**Python (pip, обидві ОС):**
+```bash
+pip3 install --user pdfminer.six python-docx openpyxl xlsx2csv pdfplumber chardet
+```
 
-**Примітка:** для DOC/XLS потрібні `libreoffice-writer` і `libreoffice-calc` (не просто `libreoffice-core`).
+Повний маніфест у [`manifest.md`](manifest.md). `bin/install-deps.sh` автоматично визначає ОС і друкує потрібну команду. `bin/doctor.sh` перевіряє, що все встановлено.
+
+**Примітки:**
+- Debian/Ubuntu: для DOC/XLS потрібні `libreoffice-writer` і `libreoffice-calc` (не просто `libreoffice-core`).
+- macOS: `tesseract-lang` пакет включає всі мови (в т.ч. ukr/rus/eng).
 
 ## Видалення
 

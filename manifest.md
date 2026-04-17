@@ -1,7 +1,8 @@
 # doc-extract — системні залежності
 
 Machine-readable manifest. Parser у `bin/doctor.sh` читає секції
-`## apt-packages` і `## pip-packages` як списки `- name` з коментарями.
+`## apt-packages`, `## brew-packages` і `## pip-packages` як списки
+`- name` з коментарями.
 
 ## apt-packages
 
@@ -15,6 +16,20 @@ Machine-readable manifest. Parser у `bin/doctor.sh` читає секції
 - antiword            # DOC lightweight fallback
 - catdoc              # DOC last-resort
 - ocrmypdf            # готовий OCR pipeline для PDF
+
+## brew-packages
+
+- poppler             # pdftotext, pdfinfo, pdftoppm, pdfimages — PDF tools
+- tesseract           # OCR engine
+- tesseract-lang      # всі мови (включно з ukr/rus/eng)
+- pandoc              # DOCX → plain text
+- antiword            # DOC lightweight fallback
+- catdoc              # DOC last-resort
+- ocrmypdf            # готовий OCR pipeline для PDF
+
+## brew-casks
+
+- libreoffice         # DOC/XLS → txt/xlsx конверсія (headless)
 
 ## pip-packages
 
@@ -38,13 +53,23 @@ Machine-readable manifest. Parser у `bin/doctor.sh` читає секції
 | Image         | tesseract         | —             | — |
 | PDF tables    | pdfplumber (opt)  | —             | — |
 
-## install-command
+## install-command-apt
 
-Повна разова інсталяція (для Debian/Ubuntu):
+Повна разова інсталяція для Debian/Ubuntu:
 
 ```bash
 sudo apt-get install -y poppler-utils libreoffice-core \
   tesseract-ocr tesseract-ocr-ukr tesseract-ocr-rus tesseract-ocr-eng \
   pandoc antiword catdoc ocrmypdf
+pip3 install --user pdfminer.six python-docx openpyxl xlsx2csv pdfplumber chardet
+```
+
+## install-command-brew
+
+Повна разова інсталяція для macOS (потребує [Homebrew](https://brew.sh)):
+
+```bash
+brew install poppler tesseract tesseract-lang pandoc antiword catdoc ocrmypdf
+brew install --cask libreoffice
 pip3 install --user pdfminer.six python-docx openpyxl xlsx2csv pdfplumber chardet
 ```

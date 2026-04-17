@@ -32,11 +32,12 @@ has_py_module() {
   python3 -c "import $1" 2>/dev/null
 }
 
-# require_cmd <cmd> <apt-package>
+# require_cmd <cmd> <package-name>
 # Exits with EXIT_MISSING_DEPENDENCY if not available.
+# Package name is passed generically; run install-deps.sh for OS-specific command.
 require_cmd() {
   if ! has_cmd "$1"; then
-    log_err "Missing command: $1 (install: sudo apt-get install -y $2)"
+    log_err "Missing command: $1 (package: $2). Run: bash <skill>/bin/install-deps.sh"
     return 1
   fi
   return 0
